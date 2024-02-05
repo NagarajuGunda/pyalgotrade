@@ -201,7 +201,6 @@ class Order(object):
         return self.__submitDateTime
 
     def setSubmitted(self, orderId, dateTime):
-        assert(self.__id is None or orderId == self.__id)
         self.__id = orderId
         self.__submitDateTime = dateTime
 
