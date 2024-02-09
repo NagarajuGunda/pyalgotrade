@@ -158,7 +158,7 @@ class Position(object):
         assert(entryOrder.isInitial())
 
         self.__state = None
-        self.__activeOrders = {}
+        self.__activeOrders = set()
         self.__shares = 0
         self.__strategy = strategy
         self.__entryOrder = None
@@ -185,7 +185,7 @@ class Position(object):
         # the order in the strategy.
         self.getStrategy().getBroker().submitOrder(order)
 
-        self.__activeOrders[order.getId()] = order
+        self.__activeOrders.add(order)
         self.getStrategy().registerPositionOrder(self, order)
 
     def setEntryDateTime(self, dateTime):
@@ -205,7 +205,7 @@ class Position(object):
         return self.__strategy.getLastPrice(self.getInstrument())
 
     def getActiveOrders(self):
-        return list(self.__activeOrders.values())
+        return list(self.__activeOrders)
 
     def getShares(self):
         """Returns the number of shares.
@@ -370,7 +370,7 @@ class Position(object):
 
         order = orderEvent.getOrder()
         if not order.isActive():
-            del self.__activeOrders[order.getId()]
+            self.__activeOrders.discard(order)
 
         # Update the number of shares.
         if orderEvent.getEventType() in (broker.OrderEvent.Type.PARTIALLY_FILLED, broker.OrderEvent.Type.FILLED):

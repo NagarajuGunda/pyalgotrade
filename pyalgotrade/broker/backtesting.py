@@ -192,7 +192,7 @@ class Broker(broker.Broker):
             self.__commission = commission
         self.__shares = {}
         self.__instrumentPrice = {}  # Used by setShares
-        self.__activeOrders = {}
+        self.__activeOrders = set()
         self.__useAdjustedValues = False
         self.__fillStrategy = fillstrategy.DefaultStrategy()
         self.__logger = logger.getLogger(Broker.LOGGER_NAME)
@@ -216,14 +216,10 @@ class Broker(broker.Broker):
         return ret
 
     def _registerOrder(self, order):
-        assert(order.getId() not in self.__activeOrders)
-        assert(order.getId() is not None)
-        self.__activeOrders[order.getId()] = order
+        self.__activeOrders.add(order)
 
     def _unregisterOrder(self, order):
-        assert(order.getId() in self.__activeOrders)
-        assert(order.getId() is not None)
-        del self.__activeOrders[order.getId()]
+        self.__activeOrders.discard(order)
 
     def getLogger(self):
         return self.__logger
@@ -279,9 +275,9 @@ class Broker(broker.Broker):
 
     def getActiveOrders(self, instrument=None):
         if instrument is None:
-            ret = list(self.__activeOrders.values())
+            ret = sorted(self.__activeOrders, key=lambda order: order.getId())
         else:
-            ret = [order for order in self.__activeOrders.values() if order.getInstrument() == instrument]
+            ret = sorted([order for order in self.__activeOrders if order.getInstrument() == instrument], key=lambda order: order.getId())
         return ret
 
     def _getCurrentDateTime(self):
@@ -472,7 +468,7 @@ class Broker(broker.Broker):
 
         # This is to froze the orders that will be processed in this event, to avoid new getting orders introduced
         # and processed on this very same event.
-        ordersToProcess = list(self.__activeOrders.values())
+        ordersToProcess = sorted(self.__activeOrders, key=lambda order: order.getId())
 
         for order in ordersToProcess:
             # This may trigger orders to be added/removed from __activeOrders.
@@ -520,8 +516,8 @@ class Broker(broker.Broker):
         return StopLimitOrder(action, instrument, stopPrice, limitPrice, quantity, self.getInstrumentTraits(instrument))
 
     def cancelOrder(self, order):
-        activeOrder = self.__activeOrders.get(order.getId())
-        if activeOrder is None:
+        activeOrder = order
+        if activeOrder not in self.__activeOrders:
             raise Exception("The order is not active anymore")
         if activeOrder.isFilled():
             raise Exception("Can't cancel order that has already been filled")
